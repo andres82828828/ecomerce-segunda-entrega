@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 240" width="400" height="240">
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e3a8a"/>
+      <stop offset="1" stop-color="#5b21b6"/>
+    </linearGradient>
+    <linearGradient id="chip" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="240" rx="18" fill="url(#fondo)"/>
+  <g stroke="#93c5fd" stroke-width="2" fill="none" opacity="0.45">
+    <path d="M0 60 H90 L110 80 H150"/>
+    <path d="M0 180 H70 L95 155 H150"/>
+    <path d="M400 50 H320 L300 70 H250"/>
+    <path d="M400 190 H330 L305 165 H250"/>
+    <path d="M200 0 V60"/>
+    <path d="M200 240 V180"/>
+  </g>
+  <g fill="#93c5fd" opacity="0.7">
+    <circle cx="90" cy="60" r="4"/>
+    <circle cx="70" cy="180" r="4"/>
+    <circle cx="320" cy="50" r="4"/>
+    <circle cx="330" cy="190" r="4"/>
+  </g>
+  <g stroke="#c4b5fd" stroke-width="4">
+    <path d="M165 70 V55 M185 70 V55 M205 70 V55 M225 70 V55 M235 70 V55"/>
+    <path d="M165 185 V170 M185 185 V170 M205 185 V170 M225 185 V170 M235 185 V170"/>
+    <path d="M150 85 H135 M150 105 H135 M150 125 H135 M150 145 H135 M150 160 H135"/>
+    <path d="M250 85 H265 M250 105 H265 M250 125 H265 M250 145 H265 M250 160 H265"/>
+  </g>
+  <rect x="150" y="70" width="100" height="100" rx="14" fill="url(#chip)" stroke="#e0e7ff" stroke-width="3"/>
+  <text x="200" y="135" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="900" fill="#ffffff">M</text>
+</svg>
