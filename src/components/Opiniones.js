@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { catalogoProductos } from "../data/productos";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 
 const OPINION_INICIAL = {
@@ -21,7 +20,7 @@ function Estrellas({ cantidad }) {
   );
 }
 
-function Opiniones() {
+function Opiniones({ productos }) {
   // Las opiniones se guardan en LocalStorage con el hook personalizado.
   const [opiniones, setOpiniones] = useLocalStorage("megabyte-opiniones", []);
   const [formulario, setFormulario] = useState(OPINION_INICIAL);
@@ -49,7 +48,7 @@ function Opiniones() {
       return;
     }
 
-    const producto = catalogoProductos.find((p) => p.id === Number(formulario.productoId));
+    const producto = productos.find((p) => p.id === Number(formulario.productoId));
     const nuevaOpinion = {
       id: Date.now(),
       autor: formulario.autor.trim(),
@@ -95,7 +94,7 @@ function Opiniones() {
             Producto
             <select name="productoId" value={formulario.productoId} onChange={manejarCambio}>
               <option value="">-- Selecciona --</option>
-              {catalogoProductos.map((producto) => (
+              {productos.map((producto) => (
                 <option key={producto.id} value={producto.id}>
                   {producto.nombre}
                 </option>

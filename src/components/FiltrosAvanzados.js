@@ -15,6 +15,9 @@ function FiltrosAvanzados({ filtros, onFiltrosChange, marcas, precioTope, onLimp
     onFiltrosChange({ ...filtros, [campo]: valor });
   };
 
+  // "Infinity" significa sin límite: se muestra como el precio más alto del catálogo.
+  const precioMostrado = Math.min(filtros.precioMaximo, precioTope);
+
   const alternarMarca = (marca) => {
     const yaSeleccionada = filtros.marcas.includes(marca);
     actualizar(
@@ -53,14 +56,14 @@ function FiltrosAvanzados({ filtros, onFiltrosChange, marcas, precioTope, onLimp
           </fieldset>
 
           <fieldset className="filtros__grupo">
-            <legend>Precio máximo: ${Number(filtros.precioMaximo).toLocaleString()} COP</legend>
+            <legend>Precio máximo: ${precioMostrado.toLocaleString()} COP</legend>
             <input
               type="range"
               className="filtros__rango"
               min={0}
               max={precioTope}
               step={50000}
-              value={filtros.precioMaximo}
+              value={precioMostrado}
               onChange={(evento) => actualizar("precioMaximo", Number(evento.target.value))}
             />
           </fieldset>

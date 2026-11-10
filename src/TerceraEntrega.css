@@ -1,0 +1,306 @@
+/* ==========================================
+   TERCERA ENTREGA - Panel de administración (CRUD + estadísticas)
+   (mismo tema oscuro de App.css y SegundaEntrega.css)
+   ========================================== */
+
+.estado-carga {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #9ca3af;
+}
+
+.checkout-form__boton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ---------- LOGIN ---------- */
+.admin-login {
+  max-width: 420px;
+  margin: 1.25rem auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.5rem;
+  background-color: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+}
+
+.admin-login__ayuda {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+/* ---------- ENCABEZADO Y AVISOS ---------- */
+.admin__sesion {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.admin__sesion strong {
+  color: #a78bfa;
+}
+
+.admin__aviso {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 8px;
+  background-color: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #ddd6fe;
+  font-size: 0.85rem;
+}
+
+.admin__aviso button {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+/* ---------- ESTADÍSTICAS ---------- */
+.admin-stats__tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.admin-stats__tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  background-color: #111827;
+  border: 1px solid #1f2937;
+  border-left: 3px solid #8b5cf6;
+  border-radius: 10px;
+}
+
+.admin-stats__tarjeta--alerta {
+  border-left-color: #f87171;
+}
+
+.admin-stats__etiqueta {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9ca3af;
+}
+
+.admin-stats__valor {
+  font-size: 1.15rem;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-stats__columnas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-caja {
+  padding: 1rem;
+  background-color: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+}
+
+.admin-caja .seccion-vacia {
+  padding: 1rem;
+  font-size: 0.85rem;
+}
+
+.admin-caja__titulo {
+  font-size: 0.9rem;
+  color: #e5e7eb;
+  margin-bottom: 0.75rem;
+}
+
+.admin-barras,
+.admin-lista {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+}
+
+.admin-barras__fila {
+  display: grid;
+  grid-template-columns: 120px 1fr 36px;
+  align-items: center;
+  gap: 0.5rem;
+  color: #d1d5db;
+}
+
+.admin-barras__pista {
+  height: 8px;
+  background-color: #1f2937;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.admin-barras__relleno {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  border-radius: 999px;
+}
+
+.admin-barras__valor {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-lista li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #d1d5db;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #1f2937;
+}
+
+.admin-lista li:last-child {
+  border-bottom: none;
+}
+
+.admin-texto--alerta {
+  color: #fbbf24;
+}
+
+.admin-texto--peligro {
+  color: #f87171;
+}
+
+/* ---------- FORMULARIO DE PRODUCTO ---------- */
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  background-color: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  scroll-margin-top: 1rem;
+}
+
+.admin-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.checkout-form__campo select {
+  background-color: #1f2937;
+  border: 1px solid #374151;
+  color: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.admin-form__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-form__acciones .checkout-form__boton {
+  margin-top: 0;
+  padding: 0.6rem 1.25rem;
+}
+
+/* ---------- TABLA ---------- */
+.admin-tabla__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.admin-tabla__buscar {
+  max-width: 280px;
+}
+
+.admin-tabla__contenedor {
+  overflow-x: auto;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+}
+
+.admin-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  color: #d1d5db;
+}
+
+.admin-tabla th,
+.admin-tabla td {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #1f2937;
+  white-space: nowrap;
+}
+
+.admin-tabla td:nth-child(2) {
+  white-space: normal;
+  min-width: 200px;
+}
+
+.admin-tabla th {
+  position: sticky;
+  top: 0;
+  background-color: #111827;
+  color: #9ca3af;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.5px;
+}
+
+.admin-tabla tbody tr:hover {
+  background-color: rgba(31, 41, 55, 0.6);
+}
+
+.admin-tabla__fila--editando {
+  background-color: rgba(139, 92, 246, 0.15) !important;
+}
+
+.admin-tabla__acciones {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.admin-tabla__acciones .boton-secundario {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.78rem;
+}
+
+.admin-tabla__acciones .boton-secundario:not(.admin-boton--peligro):hover {
+  border-color: #8b5cf6;
+  color: #c4b5fd;
+}
+
+.admin-boton--peligro:hover {
+  border-color: #f87171;
+  color: #f87171;
+}

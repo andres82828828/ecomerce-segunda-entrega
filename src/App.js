@@ -1,15 +1,16 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { catalogoProductos, categoriasDisponibles, NOMBRE_CATEGORIA } from "./data/productos";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { NOMBRE_CATEGORIA } from "./data/productos";
 import StoreLayout from "./components/StoreLayout";
 import { useLocalStorage } from "./hooks/useLocalStorage";
+import { listarProductos, registrarPedido } from "./services/api";
 import "./App.css";
 import "./SegundaEntrega.css";
+import "./TerceraEntrega.css";
 
-const PRECIO_TOPE = Math.max(...catalogoProductos.map((producto) => producto.precio));
-
+// Mientras no se haya tocado el slider, el precio máximo es "sin límite".
 const FILTROS_INICIALES = {
   marcas: [],
-  precioMaximo: PRECIO_TOPE,
+  precioMaximo: Infinity,
   soloDisponibles: false,
   orden: "relevancia",
 };
@@ -23,14 +24,33 @@ function ordenarProductos(lista, orden) {
 }
 
 export function App() {
-  // Segunda entrega: productos (stock), carrito e historial se guardan en LocalStorage.
-  const [productos, setProductos] = useLocalStorage("megabyte-productos", catalogoProductos);
+  // Tercera entrega: los productos vienen de la base de datos (API).
+  // El carrito y el historial del cliente siguen en LocalStorage.
+  const [productos, setProductos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState("");
   const [carrito, setCarrito] = useLocalStorage("megabyte-carrito", []);
   const [historial, setHistorial] = useLocalStorage("megabyte-historial", []);
   const [busqueda, setBusqueda] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("Todas");
   const [filtros, setFiltros] = useState(FILTROS_INICIALES);
   const [seccionActiva, setSeccionActiva] = useState("catalogo");
+
+  const recargarProductos = useCallback(async () => {
+    try {
+      setProductos(await listarProductos());
+      setErrorCarga("");
+    } catch (error) {
+      setErrorCarga(error.message);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  // useEffect: al montar la app se piden los productos al servidor.
+  useEffect(() => {
+    recargarProductos();
+  }, [recargarProductos]);
 
   // useEffect: actualiza el título de la pestaña cada vez que cambia el carrito.
   useEffect(() => {
@@ -57,34 +77,38 @@ export function App() {
     setCarrito((actual) => actual.filter((_, i) => i !== indice));
   };
 
-  const finalizarCompra = (orden) => {
-    setProductos((catalogoActual) =>
-      catalogoActual.map((prodCatalogo) => {
-        const cantidadComprada = carrito.filter((item) => item.id === prodCatalogo.id).length;
+  // Guarda el pedido en la BD (el servidor valida y descuenta el stock).
+  // Si falla, lanza el error para que el formulario lo muestre y no se descargue la factura.
+  const finalizarCompra = async (orden) => {
+    const cantidades = {};
+    carrito.forEach((item) => {
+      cantidades[item.id] = (cantidades[item.id] || 0) + 1;
+    });
 
-        if (cantidadComprada > 0) {
-          return {
-            ...prodCatalogo,
-            stock: Math.max(0, prodCatalogo.stock - cantidadComprada),
-          };
-        }
-        return prodCatalogo;
-      })
-    );
-
-    if (orden) {
-      setHistorial((actual) => [
-        {
-          id: orden.id,
-          fecha: orden.fecha,
-          cliente: orden.nombre,
-          cantidad: orden.items.length,
-          total: orden.total,
-          productos: orden.items.map((item) => item.nombre),
-        },
-        ...actual,
-      ]);
+    try {
+      await registrarPedido({
+        codigo: orden.id,
+        cliente: orden.nombre,
+        email: orden.email,
+        ciudad: orden.ciudad,
+        items: Object.entries(cantidades).map(([id, cantidad]) => ({ id: Number(id), cantidad })),
+      });
+    } finally {
+      // Con éxito o sin él, se refresca el stock real desde la BD.
+      await recargarProductos();
     }
+
+    setHistorial((actual) => [
+      {
+        id: orden.id,
+        fecha: orden.fecha,
+        cliente: orden.nombre,
+        cantidad: orden.items.length,
+        total: orden.total,
+        productos: orden.items.map((item) => item.nombre),
+      },
+      ...actual,
+    ]);
 
     setCarrito([]);
   };
@@ -95,8 +119,18 @@ export function App() {
   );
 
   const marcasDisponibles = useMemo(
-    () => Array.from(new Set(catalogoProductos.map((producto) => producto.marca))).sort(),
-    []
+    () => Array.from(new Set(productos.map((producto) => producto.marca))).sort(),
+    [productos]
+  );
+
+  const categoriasDisponibles = useMemo(
+    () => ["Todas", ...Array.from(new Set(productos.map((producto) => producto.categoria)))],
+    [productos]
+  );
+
+  const precioTope = useMemo(
+    () => (productos.length > 0 ? Math.max(...productos.map((producto) => producto.precio)) : 0),
+    [productos]
   );
 
   const productosFiltrados = useMemo(() => {
@@ -140,12 +174,17 @@ export function App() {
       filtros={filtros}
       onFiltrosChange={setFiltros}
       marcasDisponibles={marcasDisponibles}
-      precioTope={PRECIO_TOPE}
+      precioTope={precioTope}
       onLimpiarFiltros={limpiarFiltros}
       onSoltarProducto={agregarPorId}
       historial={historial}
       onBorrarHistorial={() => setHistorial([])}
       totalProductos={productos.length}
+      productos={productos}
+      cargando={cargando}
+      errorCarga={errorCarga}
+      onReintentar={recargarProductos}
+      onProductosCambiados={recargarProductos}
     />
   );
 }

@@ -1,70 +1,107 @@
-# Getting Started with Create React App
+# MEGABYTE — Tienda de hardware para PC gaming
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+E-commerce hecho en **React** con un backend propio en **Node.js + Express** conectado a una base de datos **SQLite**.
 
-## Available Scripts
+## Cómo ejecutarlo
 
-In the project directory, you can run:
+Requisito: tener instalado [Node.js](https://nodejs.org) 18 o superior.
 
-### `npm start`
+```bash
+npm install
+npm run dev
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+`npm run dev` arranca dos cosas a la vez:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+| Parte | Dirección | Qué es |
+|---|---|---|
+| `api` | http://localhost:4000 | Servidor Express + base de datos SQLite (carpeta `server/`) |
+| `web` | http://localhost:3000 | La tienda en React (se abre en el navegador) |
 
-### `npm test`
+La primera vez que arranca, el servidor crea solo el archivo `server/megabyte.db` y lo llena con los 40 productos iniciales.
+Para empezar con la base de datos limpia, basta con borrar ese archivo y volver a ejecutar `npm run dev`.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Acceso de administrador
 
-### `npm run build`
+En la pestaña **Administración** de la tienda:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- Usuario: `admin`
+- Contraseña: `megabyte123`
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+(Se pueden cambiar con las variables de entorno `ADMIN_USUARIO` y `ADMIN_CONTRASENA` antes de crear la base de datos).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Qué incluye cada entrega
 
-### `npm run eject`
+### Primer corte
+- Catálogo de productos por categorías, búsqueda y carrito de compras.
+- Formulario de facturación con validaciones y factura en PDF (`jspdf`).
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Segundo corte
+- Filtros avanzados (marca, precio máximo, solo con stock, orden).
+- Menú de secciones, opiniones de clientes e historial de compras.
+- Drag and drop de productos al carrito.
+- Conversor a dólares con una API externa (`open.er-api.com`).
+- Persistencia en LocalStorage con un hook propio (`useLocalStorage`).
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Tercer corte
+**Aplicación conectada a una base de datos con CRUD**
+- El catálogo ya no está escrito en el código: se lee de SQLite a través de la API.
+- Desde el panel de administración se pueden **crear, consultar, editar y eliminar** productos.
+- Validaciones en el formulario (frontend) y también en el servidor (backend).
+- Al confirmar una compra, el pedido se guarda en la BD y el stock se descuenta en una **transacción**: si no hay stock suficiente no se registra nada y no se descarga la factura.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+**Valor agregado**
+- **Login de administrador**: las rutas que modifican datos están protegidas con un token de sesión. Las contraseñas se guardan con hash `scrypt` y sal aleatoria, nunca en texto plano.
+- **Panel de estadísticas** calculado con consultas SQL: total de productos y unidades, valor del inventario, pedidos e ingresos, unidades por categoría, alertas de stock bajo, productos más vendidos y últimos pedidos.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Base de datos
 
-## Learn More
+| Tabla | Para qué sirve |
+|---|---|
+| `productos` | Catálogo (nombre, categoría, marca, precio, stock, imagen, enlace de características) |
+| `usuarios` | Administradores (usuario, sal y hash de la contraseña) |
+| `sesiones` | Tokens de sesión activos y su vencimiento |
+| `pedidos` | Compras realizadas (código, cliente, ciudad, total, fecha) |
+| `pedido_items` | Productos de cada pedido (cantidad y precio al momento de la compra) |
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## API
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+| Método | Ruta | Protegida | Descripción |
+|---|---|---|---|
+| GET | `/api/productos` | No | Lista todos los productos |
+| GET | `/api/productos/:id` | No | Un producto |
+| POST | `/api/productos` | Sí | Crea un producto |
+| PUT | `/api/productos/:id` | Sí | Edita un producto |
+| DELETE | `/api/productos/:id` | Sí | Elimina un producto |
+| POST | `/api/pedidos` | No | Registra una compra y descuenta stock |
+| GET | `/api/pedidos` | Sí | Últimos pedidos |
+| GET | `/api/estadisticas` | Sí | Resumen para el panel |
+| POST | `/api/auth/login` | No | Inicia sesión y devuelve el token |
+| GET | `/api/auth/sesion` | Sí | Comprueba si el token sigue vigente |
+| POST | `/api/auth/logout` | Sí | Cierra la sesión |
 
-### Code Splitting
+Las rutas protegidas esperan la cabecera `Authorization: Bearer <token>`.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Estructura
 
-### Analyzing the Bundle Size
+```
+server/
+  index.js            Rutas de la API (CRUD, pedidos, login, estadísticas)
+  db.js               Conexión a SQLite, creación de tablas y datos iniciales
+  datosIniciales.js   Los 40 productos con los que arranca la BD
+src/
+  App.js              Estado global: productos (desde la API), carrito, filtros
+  services/api.js     Funciones que llaman a la API
+  components/
+    StoreLayout.js    Estructura de la tienda (catálogo, carrito, facturación)
+    admin/            Login, formulario de producto, tabla y estadísticas
+  TerceraEntrega.css  Estilos del panel de administración
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Scripts
 
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- `npm run dev`: API + tienda a la vez (lo normal para trabajar).
+- `npm run server`: solo la API.
+- `npm start`: solo la tienda (necesita la API corriendo para cargar productos).
+- `npm test`: pruebas.
+- `npm run build`: versión de producción de la tienda.

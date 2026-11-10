@@ -9,6 +9,9 @@ import CarritoDropZone from "./CarritoDropZone";
 import ConversorDolares from "./ConversorDolares";
 import Opiniones from "./Opiniones";
 import HistorialCompras from "./HistorialCompras";
+import PanelAdmin from "./admin/PanelAdmin";
+// Imagen de respaldo para productos creados desde el panel sin URL de imagen.
+import imagenGenerica from "../assets/banner-megabyte.svg";
 
 function Header({
   busqueda,
@@ -73,7 +76,7 @@ function ProductCard({ producto, onAgregar }) {
       onDragStart={manejarDragStart}
     >
       <div className="product-card__media">
-        <img src={producto.imagen} alt={producto.nombre} loading="lazy" />
+        <img src={producto.imagen || imagenGenerica} alt={producto.nombre} loading="lazy" />
         <span className="product-card__categoria">
           {NOMBRE_CATEGORIA[producto.categoria] || producto.categoria}
         </span>
@@ -92,14 +95,16 @@ function ProductCard({ producto, onAgregar }) {
           </span>
         </div>
 
-        <a
-          href={producto.specUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="product-card__specs-link"
-        >
-          Ver características oficiales de {producto.marca} ↗
-        </a>
+        {producto.specUrl && (
+          <a
+            href={producto.specUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="product-card__specs-link"
+          >
+            Ver características oficiales de {producto.marca} ↗
+          </a>
+        )}
 
         <button
           type="button"
@@ -114,7 +119,22 @@ function ProductCard({ producto, onAgregar }) {
   );
 }
 
-function ProductGrid({ productos, onAgregar }) {
+function ProductGrid({ productos, onAgregar, cargando, errorCarga, onReintentar }) {
+  if (cargando) {
+    return <p className="estado-carga">Cargando productos desde la base de datos...</p>;
+  }
+
+  if (errorCarga) {
+    return (
+      <div className="product-grid__vacio">
+        <p>{errorCarga}</p>
+        <button type="button" className="boton-secundario" onClick={onReintentar}>
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
   if (productos.length === 0) {
     return (
       <div className="product-grid__vacio">
@@ -184,13 +204,14 @@ function CheckoutForm({ carrito, total, onFacturaGenerada }) {
   const [errores, setErrores] = useState({});
   const [mensaje, setMensaje] = useState("");
   const [esError, setEsError] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   const manejarCambio = (evento) => {
     const { name, value } = evento.target;
     setDatos({ ...datos, [name]: value });
   };
 
-  const manejarEnvio = (evento) => {
+  const manejarEnvio = async (evento) => {
     evento.preventDefault();
 
     if (carrito.length === 0) {
@@ -221,13 +242,24 @@ function CheckoutForm({ carrito, total, onFacturaGenerada }) {
       total,
     };
 
+    // Primero se guarda el pedido en la BD; la factura solo se descarga si se pudo registrar.
+    setEnviando(true);
+    try {
+      await onFacturaGenerada(orden);
+    } catch (error) {
+      setEsError(true);
+      setMensaje(error.message);
+      return;
+    } finally {
+      setEnviando(false);
+    }
+
     descargarFacturaPDF(orden);
 
     setEsError(false);
-    setMensaje("¡Listo! Tu factura se descargó en PDF.");
+    setMensaje("¡Listo! Tu pedido quedó registrado y la factura se descargó en PDF.");
     setDatos(DATOS_INICIALES);
     setErrores({});
-    onFacturaGenerada(orden);
   };
 
   return (
@@ -319,8 +351,8 @@ function CheckoutForm({ carrito, total, onFacturaGenerada }) {
         {errores.ciudad && <span className="checkout-form__error">{errores.ciudad}</span>}
       </div>
 
-      <button type="submit" className="checkout-form__boton">
-        Confirmar y descargar factura
+      <button type="submit" className="checkout-form__boton" disabled={enviando}>
+        {enviando ? "Registrando pedido..." : "Confirmar y descargar factura"}
       </button>
 
       {mensaje && (
@@ -365,6 +397,11 @@ function StoreLayout({
   historial,
   onBorrarHistorial,
   totalProductos,
+  productos,
+  cargando,
+  errorCarga,
+  onReintentar,
+  onProductosCambiados,
 }) {
   return (
     <div className="tienda">
@@ -398,14 +435,24 @@ function StoreLayout({
                 precioTope={precioTope}
                 onLimpiar={onLimpiarFiltros}
               />
-              <ProductGrid productos={productosFiltrados} onAgregar={onAgregar} />
+              <ProductGrid
+                productos={productosFiltrados}
+                onAgregar={onAgregar}
+                cargando={cargando}
+                errorCarga={errorCarga}
+                onReintentar={onReintentar}
+              />
             </>
           )}
 
-          {seccionActiva === "opiniones" && <Opiniones />}
+          {seccionActiva === "opiniones" && <Opiniones productos={productos} />}
 
           {seccionActiva === "historial" && (
             <HistorialCompras historial={historial} onBorrarHistorial={onBorrarHistorial} />
+          )}
+
+          {seccionActiva === "admin" && (
+            <PanelAdmin productos={productos} onProductosCambiados={onProductosCambiados} />
           )}
         </section>
 

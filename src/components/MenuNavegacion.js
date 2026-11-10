@@ -4,6 +4,7 @@ const OPCIONES_MENU = [
   { id: "catalogo", etiqueta: "Catálogo" },
   { id: "opiniones", etiqueta: "Opiniones" },
   { id: "historial", etiqueta: "Mis compras" },
+  { id: "admin", etiqueta: "Administración" },
 ];
 
 // Menú controlado por una variable de estado (seccionActiva) que vive en App.js.
