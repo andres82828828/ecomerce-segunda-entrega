@@ -304,3 +304,8 @@
   border-color: #f87171;
   color: #f87171;
 }
+
+/* ---------- PAPELERA (borrado lógico) ---------- */
+.admin-papelera {
+  margin-top: 1.5rem;
+}

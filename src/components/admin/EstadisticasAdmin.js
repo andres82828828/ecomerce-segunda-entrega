@@ -17,6 +17,7 @@ function EstadisticasAdmin({ estadisticas, pedidos }) {
     { titulo: "Pedidos", valor: ventas.pedidos },
     { titulo: "Ingresos", valor: `${formatoCop(ventas.ingresos)} COP` },
     { titulo: "Agotados", valor: inventario.agotados, alerta: inventario.agotados > 0 },
+    { titulo: "En papelera", valor: inventario.enPapelera },
   ];
 
   return (

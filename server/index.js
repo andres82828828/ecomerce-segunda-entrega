@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const express = require("express");
-const { db, contrasenaValida } = require("./db");
+const { db, contrasenaValida, registrarActividad } = require("./db");
 
 const PUERTO = process.env.PUERTO || 4000;
 const DURACION_SESION_MS = 8 * 60 * 60 * 1000; // 8 horas
@@ -88,15 +88,31 @@ function validarProducto(datos) {
   return { errores, producto };
 }
 
-// READ: todos los productos (público, lo usa la tienda).
+// Borrado lógico: los productos "eliminados" siguen en la tabla, pero con fecha en eliminado_en.
+// Por eso todas las consultas de la tienda filtran con esta condición.
+const SOLO_ACTIVOS = "eliminado_en IS NULL";
+
+// READ: todos los productos activos (público, lo usa la tienda).
 app.get("/api/productos", (req, res) => {
-  res.json(db.prepare("SELECT * FROM productos ORDER BY id").all());
+  const productos = db.prepare(`SELECT * FROM productos WHERE ${SOLO_ACTIVOS} ORDER BY id`).all();
+  registrarActividad("READ", "productos", null, `Listado completo: ${productos.length} productos`);
+  res.json(productos);
 });
 
-// READ: un producto.
+// READ: la papelera (productos con borrado lógico). Va antes de "/:id" para que Express no la confunda.
+app.get("/api/productos/eliminados", requiereAdmin, (req, res) => {
+  const productos = db
+    .prepare("SELECT * FROM productos WHERE eliminado_en IS NOT NULL ORDER BY eliminado_en DESC")
+    .all();
+  registrarActividad("READ", "productos", null, `Papelera: ${productos.length} productos eliminados`);
+  res.json(productos);
+});
+
+// READ: un producto activo.
 app.get("/api/productos/:id", (req, res) => {
-  const producto = db.prepare("SELECT * FROM productos WHERE id = ?").get(req.params.id);
+  const producto = db.prepare(`SELECT * FROM productos WHERE id = ? AND ${SOLO_ACTIVOS}`).get(req.params.id);
   if (!producto) return res.status(404).json({ error: "Producto no encontrado." });
+  registrarActividad("READ", "productos", producto.id, `Consulta: ${producto.nombre}`);
   res.json(producto);
 });
 
@@ -122,18 +138,30 @@ app.put("/api/productos/:id", requiereAdmin, (req, res) => {
   const resultado = db
     .prepare(
       `UPDATE productos SET nombre = @nombre, categoria = @categoria, marca = @marca, precio = @precio,
-       stock = @stock, imagen = @imagen, specUrl = @specUrl WHERE id = @id`
+       stock = @stock, imagen = @imagen, specUrl = @specUrl WHERE id = @id AND ${SOLO_ACTIVOS}`
     )
     .run({ ...producto, id: req.params.id });
   if (resultado.changes === 0) return res.status(404).json({ error: "Producto no encontrado." });
   res.json(db.prepare("SELECT * FROM productos WHERE id = ?").get(req.params.id));
 });
 
-// DELETE
+// DELETE (borrado lógico): no se borra la fila, solo se marca la fecha en eliminado_en.
+// Así el producto se puede restaurar y los pedidos antiguos conservan su referencia.
 app.delete("/api/productos/:id", requiereAdmin, (req, res) => {
-  const resultado = db.prepare("DELETE FROM productos WHERE id = ?").run(req.params.id);
+  const resultado = db
+    .prepare(`UPDATE productos SET eliminado_en = datetime('now', 'localtime') WHERE id = ? AND ${SOLO_ACTIVOS}`)
+    .run(req.params.id);
   if (resultado.changes === 0) return res.status(404).json({ error: "Producto no encontrado." });
   res.status(204).end();
+});
+
+// Restaurar un producto de la papelera.
+app.patch("/api/productos/:id/restaurar", requiereAdmin, (req, res) => {
+  const resultado = db
+    .prepare("UPDATE productos SET eliminado_en = NULL WHERE id = ? AND eliminado_en IS NOT NULL")
+    .run(req.params.id);
+  if (resultado.changes === 0) return res.status(404).json({ error: "El producto no está en la papelera." });
+  res.json(db.prepare("SELECT * FROM productos WHERE id = ?").get(req.params.id));
 });
 
 // ==========================================
@@ -150,7 +178,7 @@ app.post("/api/pedidos", (req, res) => {
   const registrarPedido = db.transaction(() => {
     let total = 0;
     const lineas = items.map(({ id, cantidad }) => {
-      const producto = db.prepare("SELECT * FROM productos WHERE id = ?").get(id);
+      const producto = db.prepare(`SELECT * FROM productos WHERE id = ? AND ${SOLO_ACTIVOS}`).get(id);
       if (!producto) throw new Error("Uno de los productos ya no existe en la tienda.");
       if (!Number.isInteger(cantidad) || cantidad <= 0) throw new Error("Cantidad inválida.");
       if (producto.stock < cantidad) {
@@ -196,18 +224,19 @@ app.get("/api/estadisticas", requiereAdmin, (req, res) => {
     .prepare(
       `SELECT COUNT(*) AS productos, COALESCE(SUM(stock), 0) AS unidades,
               COALESCE(SUM(precio * stock), 0) AS valorInventario,
-              SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END) AS agotados
-       FROM productos`
+              COALESCE(SUM(CASE WHEN stock = 0 THEN 1 ELSE 0 END), 0) AS agotados
+       FROM productos WHERE ${SOLO_ACTIVOS}`
     )
     .get();
   const ventas = db
     .prepare("SELECT COUNT(*) AS pedidos, COALESCE(SUM(total), 0) AS ingresos FROM pedidos")
     .get();
   const stockBajo = db
-    .prepare("SELECT id, nombre, stock FROM productos WHERE stock <= 3 ORDER BY stock, nombre")
+    .prepare(`SELECT id, nombre, stock FROM productos WHERE stock <= 3 AND ${SOLO_ACTIVOS} ORDER BY stock, nombre`)
     .all();
   const porCategoria = db
-    .prepare("SELECT categoria, COUNT(*) AS cantidad, SUM(stock) AS unidades FROM productos GROUP BY categoria ORDER BY categoria")
+    .prepare(`SELECT categoria, COUNT(*) AS cantidad, SUM(stock) AS unidades FROM productos
+       WHERE ${SOLO_ACTIVOS} GROUP BY categoria ORDER BY categoria`)
     .all();
   const masVendidos = db
     .prepare(
@@ -216,7 +245,11 @@ app.get("/api/estadisticas", requiereAdmin, (req, res) => {
     )
     .all();
 
-  res.json({ inventario, ventas, stockBajo, porCategoria, masVendidos });
+  const { enPapelera } = db
+    .prepare("SELECT COUNT(*) AS enPapelera FROM productos WHERE eliminado_en IS NOT NULL")
+    .get();
+
+  res.json({ inventario: { ...inventario, enPapelera }, ventas, stockBajo, porCategoria, masVendidos });
 });
 
 app.listen(PUERTO, () => {

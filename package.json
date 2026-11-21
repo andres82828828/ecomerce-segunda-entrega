@@ -9,6 +9,7 @@
     "@testing-library/user-event": "^13.5.0",
     "better-sqlite3": "^13.0.3",
     "express": "^4.22.3",
+    "http-proxy-middleware": "^2.0.12",
     "jspdf": "^4.2.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -43,6 +44,5 @@
   },
   "devDependencies": {
     "concurrently": "^10.0.7"
-  },
-  "proxy": "http://localhost:4000"
+  }
 }

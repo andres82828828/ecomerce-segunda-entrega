@@ -54,7 +54,11 @@ export const listarProductos = () => peticion("/productos");
 export const crearProducto = (producto, token) => peticion("/productos", { metodo: "POST", cuerpo: producto, token });
 export const actualizarProducto = (id, producto, token) =>
   peticion(`/productos/${id}`, { metodo: "PUT", cuerpo: producto, token });
+// Borrado lógico: el producto va a la papelera y se puede restaurar.
 export const eliminarProducto = (id, token) => peticion(`/productos/${id}`, { metodo: "DELETE", token });
+export const listarEliminados = (token) => peticion("/productos/eliminados", { token });
+export const restaurarProducto = (id, token) =>
+  peticion(`/productos/${id}/restaurar`, { metodo: "PATCH", token });
 
 // ---------- Pedidos ----------
 export const registrarPedido = (pedido) => peticion("/pedidos", { metodo: "POST", cuerpo: pedido });

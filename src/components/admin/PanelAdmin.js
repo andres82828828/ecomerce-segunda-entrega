@@ -6,8 +6,10 @@ import {
   cerrarSesion,
   crearProducto,
   eliminarProducto,
+  listarEliminados,
   listarPedidos,
   obtenerEstadisticas,
+  restaurarProducto,
   verificarSesion,
 } from "../../services/api";
 import LoginAdmin from "./LoginAdmin";
@@ -20,6 +22,7 @@ function PanelAdmin({ productos, onProductosCambiados }) {
   const [productoEditando, setProductoEditando] = useState(null);
   const [estadisticas, setEstadisticas] = useState(null);
   const [pedidos, setPedidos] = useState([]);
+  const [eliminados, setEliminados] = useState([]);
   const [aviso, setAviso] = useState("");
   const [filtroTabla, setFiltroTabla] = useState("");
 
@@ -37,12 +40,14 @@ function PanelAdmin({ productos, onProductosCambiados }) {
   const cargarResumen = useCallback(async () => {
     if (!token) return;
     try {
-      const [nuevasEstadisticas, nuevosPedidos] = await Promise.all([
+      const [nuevasEstadisticas, nuevosPedidos, nuevosEliminados] = await Promise.all([
         obtenerEstadisticas(token),
         listarPedidos(token),
+        listarEliminados(token),
       ]);
       setEstadisticas(nuevasEstadisticas);
       setPedidos(nuevosPedidos);
+      setEliminados(nuevosEliminados);
     } catch (error) {
       manejarError(error);
     }
@@ -77,11 +82,21 @@ function PanelAdmin({ productos, onProductosCambiados }) {
   };
 
   const borrarProducto = async (producto) => {
-    if (!window.confirm(`¿Eliminar "${producto.nombre}" de la base de datos?`)) return;
+    if (!window.confirm(`¿Enviar "${producto.nombre}" a la papelera? Podrás restaurarlo después.`)) return;
     try {
       await eliminarProducto(producto.id, token);
       if (productoEditando?.id === producto.id) setProductoEditando(null);
-      setAviso(`Producto "${producto.nombre}" eliminado.`);
+      setAviso(`Producto "${producto.nombre}" enviado a la papelera.`);
+      await onProductosCambiados();
+    } catch (error) {
+      manejarError(error);
+    }
+  };
+
+  const restaurar = async (producto) => {
+    try {
+      await restaurarProducto(producto.id, token);
+      setAviso(`Producto "${producto.nombre}" restaurado al catálogo.`);
       await onProductosCambiados();
     } catch (error) {
       manejarError(error);
@@ -203,6 +218,43 @@ function PanelAdmin({ productos, onProductosCambiados }) {
         </table>
         {productosTabla.length === 0 && <p className="seccion-vacia">Ningún producto coincide.</p>}
       </div>
+
+      {/* Borrado lógico: lo eliminado sigue en la BD (con fecha en eliminado_en) y se puede restaurar. */}
+      <div className="admin-tabla__encabezado admin-papelera">
+        <h3 className="checkout-form__titulo">Papelera ({eliminados.length})</h3>
+      </div>
+      {eliminados.length === 0 ? (
+        <p className="seccion-vacia">La papelera está vacía.</p>
+      ) : (
+        <div className="admin-tabla__contenedor">
+          <table className="admin-tabla">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Marca</th>
+                <th>Eliminado el</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {eliminados.map((producto) => (
+                <tr key={producto.id}>
+                  <td>{producto.id}</td>
+                  <td>{producto.nombre}</td>
+                  <td>{producto.marca}</td>
+                  <td>{producto.eliminado_en}</td>
+                  <td className="admin-tabla__acciones">
+                    <button type="button" className="boton-secundario" onClick={() => restaurar(producto)}>
+                      Restaurar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </section>
   );
 }

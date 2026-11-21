@@ -47,6 +47,7 @@ En la pestaña **Administración** de la tienda:
 **Aplicación conectada a una base de datos con CRUD**
 - El catálogo ya no está escrito en el código: se lee de SQLite a través de la API.
 - Desde el panel de administración se pueden **crear, consultar, editar y eliminar** productos.
+- **Borrado lógico**: lo eliminado va a una papelera y se puede restaurar.
 - Validaciones en el formulario (frontend) y también en el servidor (backend).
 - Al confirmar una compra, el pedido se guarda en la BD y el stock se descuenta en una **transacción**: si no hay stock suficiente no se registra nada y no se descarga la factura.
 
@@ -58,11 +59,44 @@ En la pestaña **Administración** de la tienda:
 
 | Tabla | Para qué sirve |
 |---|---|
-| `productos` | Catálogo (nombre, categoría, marca, precio, stock, imagen, enlace de características) |
+| `productos` | Catálogo (nombre, categoría, marca, precio, stock, imagen, enlace de características, `eliminado_en`) |
 | `usuarios` | Administradores (usuario, sal y hash de la contraseña) |
 | `sesiones` | Tokens de sesión activos y su vencimiento |
 | `pedidos` | Compras realizadas (código, cliente, ciudad, total, fecha) |
 | `pedido_items` | Productos de cada pedido (cantidad y precio al momento de la compra) |
+| `actividad` | Bitácora del CRUD: cada CREATE, READ, UPDATE y DELETE de productos con fecha y detalle |
+
+Los INSERT, UPDATE y DELETE sobre `productos` los anotan **triggers** de la propia base de datos
+(`productos_creado`, `productos_editado`, `productos_borrado_logico`, `productos_restaurado`, `productos_eliminado`). Las lecturas (READ) las anota la API,
+porque SQLite no tiene triggers para SELECT.
+
+### Borrado lógico
+
+Eliminar un producto **no borra la fila**: se guarda la fecha en la columna `eliminado_en` y el producto pasa a la **Papelera**
+del panel de administración, desde donde se puede **restaurar**.
+
+- `eliminado_en IS NULL` → producto activo (se ve en la tienda).
+- `eliminado_en` con fecha → producto en la papelera (la tienda, los pedidos y las estadísticas lo ignoran).
+- Ventaja: no se pierde información y los pedidos antiguos conservan la referencia al producto.
+
+```sql
+-- Lo que hace la API al "eliminar"
+UPDATE productos SET eliminado_en = datetime('now', 'localtime') WHERE id = ? AND eliminado_en IS NULL;
+-- Lo que hace al restaurar
+UPDATE productos SET eliminado_en = NULL WHERE id = ?;
+```
+
+Si la base de datos se creó antes de esta función, el servidor agrega la columna solo al arrancar, sin perder datos.
+
+### Ver la base de datos con DB Browser for SQLite
+
+1. Instala [DB Browser for SQLite](https://sqlitebrowser.org/dl/).
+2. Arranca la app con `npm run dev` (así se crea `server/megabyte.db`).
+3. En DB Browser: **Abrir base de datos de solo lectura** (flechita junto a *Abrir base de datos*) y elige `server/megabyte.db`.
+4. Pestaña **Hojear datos** → tabla `actividad` (o `productos`).
+5. Haz algo en la tienda (crear, editar, eliminar o ver productos) y pulsa **F5** en DB Browser para ver la nueva fila.
+
+Abrirla en solo lectura evita que DB Browser bloquee la base de datos mientras la app escribe en ella.
 
 ## API
 
@@ -72,7 +106,9 @@ En la pestaña **Administración** de la tienda:
 | GET | `/api/productos/:id` | No | Un producto |
 | POST | `/api/productos` | Sí | Crea un producto |
 | PUT | `/api/productos/:id` | Sí | Edita un producto |
-| DELETE | `/api/productos/:id` | Sí | Elimina un producto |
+| DELETE | `/api/productos/:id` | Sí | Borrado lógico: envía el producto a la papelera |
+| GET | `/api/productos/eliminados` | Sí | Productos en la papelera |
+| PATCH | `/api/productos/:id/restaurar` | Sí | Restaura un producto de la papelera |
 | POST | `/api/pedidos` | No | Registra una compra y descuenta stock |
 | GET | `/api/pedidos` | Sí | Últimos pedidos |
 | GET | `/api/estadisticas` | Sí | Resumen para el panel |
